@@ -1,0 +1,45 @@
+name: 'Docker Deploy'
+description: 'Builds and pushes a Docker image to Docker Hub'
+inputs:
+  app-name:
+    description: 'Application identifier'
+    required: true
+  context:
+    description: 'Directory containing Docker build context'
+    default: '.'
+  dockerfile:
+    description: 'Dockerfile path, relative to context'
+    default: 'Dockerfile'
+  tag:
+    description: 'Image tag version'
+    default: 'latest'
+  version:
+    description: 'Image tag version for release builds (optional, falls back to commit SHA)'
+    default: ''
+  image-name:
+    description: 'Docker image name'
+  dockerhub-username:
+    description: 'Docker Hub username'
+    required: true
+  dockerhub-token:
+    description: 'Docker Hub access token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.dockerhub-username }}
+        password: ${{ inputs.dockerhub-token }}
+
+    - name: Build and push image
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.context }}/${{ inputs.dockerfile }}
+        push: true
+        tags: |
+          ${{ inputs.dockerhub-username }}/${{ inputs.image-name }}:${{ inputs.tag }}
+          ${{ inputs.dockerhub-username }}/${{ inputs.image-name }}:${{ inputs.version != '' && inputs.version || github.sha }}
