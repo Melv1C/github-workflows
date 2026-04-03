@@ -88,7 +88,8 @@ jobs:
           echo "image-name=$image_name" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
-        uses: ./.github/actions/docker-deploy
+        if: steps.params.outputs.app-name != '' && steps.params.outputs.version != ''
+        uses: melv1c/github-workflows/.github/actions/docker-deploy@main
         with:
           app-name: ${{ steps.params.outputs.app-name }}
           context: .
