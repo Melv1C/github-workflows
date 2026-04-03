@@ -47,10 +47,10 @@ jobs:
           echo "image-name=$image_name" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
-        uses: ./.github/actions/docker-deploy
+        uses: melv1c/github-workflows/.github/actions/docker-deploy@main
         with:
           app-name: ${{ matrix.app }}
-          constext: .
+          context: .
           dockerfile: apps/${{ matrix.app }}/Dockerfile
           tag: staging
           image-name: ${{ steps.params.outputs.image-name }}
