@@ -1,0 +1,28 @@
+name: 'Setup'
+description: 'Sets up Node/Bun'
+inputs:
+  package-manager:
+    description: 'Package manager to use (npm, pnpm, bun)'
+    default: 'npm'
+  node-version:
+    description: 'Node.js version to use (ignored if using bun)'
+    default: '24'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Setup pnpm
+      if: inputs.package-manager == 'pnpm'
+      uses: pnpm/action-setup@v5
+
+    - name: Setup Bun
+      if: inputs.package-manager == 'bun'
+      uses: oven-sh/setup-bun@v2

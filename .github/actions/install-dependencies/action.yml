@@ -1,0 +1,28 @@
+name: 'Install Dependencies'
+description: 'Installs project dependencies using the specified package manager'
+inputs:
+  package-manager:
+    description: 'Package manager to use (npm, pnpm, bun)'
+    default: 'npm'
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        case "${{ inputs.package-manager }}" in
+          pnpm)
+            pnpm install --frozen-lockfile
+            ;;
+          bun)
+            bun install --frozen-lockfile
+            ;;
+          npm)
+            npm ci
+            ;;
+          *)
+            echo "Unsupported package manager: ${{ inputs.package-manager }}"
+            exit 1
+            ;;
+        esac
