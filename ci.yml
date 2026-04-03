@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  workflow_call:
+    inputs:
+      package-manager:
+        description: Package manager to use (npm, pnpm, bun)
+        required: false
+        type: string
+        default: npm
+      node-version:
+        description: Node.js version for npm/pnpm workflows
+        required: false
+        type: string
+        default: '24'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Setup pnpm
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Bun
+        if: inputs.package-manager == 'bun'
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${{ inputs.package-manager }}" in
+            pnpm)
+              pnpm install --frozen-lockfile
+              ;;
+            bun)
+              bun install --frozen-lockfile
+              ;;
+            npm)
+              npm ci
+              ;;
+            *)
+              echo "Unsupported package manager: ${{ inputs.package-manager }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Build
+        run: ${{ inputs.package-manager }} run build
+
+      - name: Code Check (lint, format, types-check, etc.)
+        run: ${{ inputs.package-manager }} run check
+
+      - name: Test
+        run: ${{ inputs.package-manager }} run test
