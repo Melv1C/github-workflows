@@ -1,0 +1,71 @@
+name: 'Tag Extraction'
+description: 'Parses app and version from a release tag and validates allowed apps'
+
+inputs:
+  apps:
+    description: 'JSON array of deployable app names'
+    required: true
+
+outputs:
+  app-name:
+    description: 'Resolved app name from the tag'
+    value: ${{ steps.resolve.outputs.app-name }}
+  version:
+    description: 'Resolved release version from the tag'
+    value: ${{ steps.resolve.outputs.version }}
+  is-prerelease:
+    description: 'Whether the parsed version is a pre-release'
+    value: ${{ steps.resolve.outputs.is-prerelease }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve params
+      id: resolve
+      shell: bash
+      env:
+        TAG_NAME: ${{ github.ref_name }}
+        INPUT_APPS: ${{ inputs.apps }}
+      run: |
+        set -euo pipefail
+
+        tag_name="$TAG_NAME"
+        tagged_app_name="${tag_name%@*}"
+        version="${tag_name#*@}"
+
+        if [[ -z "$tagged_app_name" || -z "$version" || "$tag_name" == "$tagged_app_name" ]]; then
+          echo "Malformed tag '$tag_name'. Expected format app-name@version."
+          exit 1
+        fi
+
+        if [[ -n "$INPUT_APPS" ]]; then
+          if ! jq -e 'type == "array" and all(.[]; type == "string")' <<< "$INPUT_APPS" >/dev/null; then
+            echo "Malformed apps input '$INPUT_APPS'. Expected a JSON array of app names, for example [\"backend\",\"frontend\"]."
+            exit 1
+          fi
+
+          if ! jq -e --arg app "$tagged_app_name" 'index($app) != null' <<< "$INPUT_APPS" >/dev/null; then
+            echo "App '$tagged_app_name' is not included in the accepted apps list."
+            exit 1
+          fi
+        fi
+
+        app_name="$tagged_app_name"
+
+        semver_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+        if [[ ! "$version" =~ $semver_regex ]]; then
+          echo "Malformed version '$version'. Expected semantic version (for example 1.2.3 or 1.2.3-rc.1)."
+          exit 1
+        fi
+
+        is_prerelease='false'
+        if [[ "$version" == *-* ]]; then
+          version_without_build="${version%%+*}"
+          if [[ "$version_without_build" == *-* ]]; then
+            is_prerelease='true'
+          fi
+        fi
+
+        echo "app-name=$app_name" >> "$GITHUB_OUTPUT"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "is-prerelease=$is_prerelease" >> "$GITHUB_OUTPUT"
