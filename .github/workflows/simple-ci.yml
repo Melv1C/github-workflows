@@ -1,4 +1,4 @@
-name: CI
+name: Simple CI
 
 on:
   workflow_call:
@@ -9,13 +9,13 @@ on:
         type: string
         default: npm
       node-version:
-        description: Node.js version for npm/pnpm workflows
+        description: Node.js version to use
         required: false
         type: string
         default: '24'
 
 jobs:
-  validate:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - name: Setup
@@ -24,32 +24,19 @@ jobs:
           package-manager: ${{ inputs.package-manager }}
           node-version: ${{ inputs.node-version }}
 
-      - name: Install Dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          case "${{ inputs.package-manager }}" in
-            pnpm)
-              pnpm install --frozen-lockfile
-              ;;
-            bun)
-              bun install --frozen-lockfile
-              ;;
-            npm)
-              npm ci
-              ;;
-            *)
-              echo "Unsupported package manager: ${{ inputs.package-manager }}"
-              exit 1
-              ;;
-          esac
+      - name: Install
+        uses: ./.github/actions/install-dependencies
+        with:
+          package-manager: ${{ inputs.package-manager }}
 
       - name: Build
+        shell: bash
         run: ${{ inputs.package-manager }} run build
 
-      - name: Code Check (lint, format, types-check, etc.)
+      - name: Check
+        shell: bash
         run: ${{ inputs.package-manager }} run check
 
       - name: Test
+        shell: bash
         run: ${{ inputs.package-manager }} run test
