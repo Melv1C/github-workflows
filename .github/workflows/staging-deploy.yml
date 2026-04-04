@@ -7,6 +7,10 @@ on:
         description: JSON array of apps to deploy (for example ["backend","frontend"])
         required: true
         type: string
+      dokploy-app-ids:
+        description: JSON object mapping app names to Dokploy application IDs (for example {"backend":"app-id-1","frontend":"app-id-2"})
+        required: true
+        type: string
       image-name-prefix:
         description: Optional prefix for image names (prefix-app)
         required: false
@@ -16,6 +20,10 @@ on:
       dockerhub-username:
         required: true
       dockerhub-token:
+        required: true
+      dokploy-domain:
+        required: true
+      dokploy-api-key:
         required: true
 
 jobs:
@@ -39,3 +47,10 @@ jobs:
           image-name: ${{ inputs.image-name-prefix }}${{ matrix.app }}
           dockerhub-username: ${{ secrets.dockerhub-username }}
           dockerhub-token: ${{ secrets.dockerhub-token }}
+
+      - name: Trigger Dokploy Staging ${{ matrix.app }} Deployment
+        uses: melv1c/github-workflows/.github/actions/trigger-dokploy-deploy@main
+        with:
+          dokploy-domain: ${{ secrets.dokploy-domain }}
+          dokploy-api-key: ${{ secrets.dokploy-api-key }}
+          application-id: ${{ fromJson(inputs.dokploy-app-ids)[matrix.app] }}

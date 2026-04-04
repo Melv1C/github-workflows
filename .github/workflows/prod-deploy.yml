@@ -7,6 +7,10 @@ on:
         description: JSON array of apps to deploy (for example ["backend","frontend"])
         required: true
         type: string
+      dokploy-app-ids:
+        description: JSON object mapping app names to Dokploy application IDs (for example {"backend":"app-id-1","frontend":"app-id-2"})
+        required: true
+        type: string
       image-name-prefix:
         description: Optional prefix for image names (prefix-app)
         required: false
@@ -16,6 +20,10 @@ on:
       dockerhub-username:
         required: true
       dockerhub-token:
+        required: true
+      dokploy-domain:
+        required: true
+      dokploy-api-key:
         required: true
 
 permissions:
@@ -33,6 +41,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Tag extraction
+        id: tag-extraction
         uses: melv1c/github-workflows/.github/actions/tag-extraction@main
         with:
           apps: ${{ inputs.apps }}
@@ -48,3 +57,11 @@ jobs:
           image-name: ${{ inputs.image-name-prefix }}${{ steps.tag-extraction.outputs.app-name }}
           dockerhub-username: ${{ secrets.dockerhub-username }}
           dockerhub-token: ${{ secrets.dockerhub-token }}
+
+      - name: Trigger Dokploy Prod ${{ steps.tag-extraction.outputs.app-name }} Deployment
+        if: steps.tag-extraction.outputs.app-name != '' && steps.tag-extraction.outputs.version != ''
+        uses: melv1c/github-workflows/.github/actions/trigger-dokploy-deploy@main
+        with:
+          dokploy-domain: ${{ secrets.dokploy-domain }}
+          dokploy-api-key: ${{ secrets.dokploy-api-key }}
+          application-id: ${{ fromJson(inputs.dokploy-app-ids)[steps.tag-extraction.outputs.app-name] }}
