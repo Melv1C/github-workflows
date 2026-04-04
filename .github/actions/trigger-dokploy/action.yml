@@ -1,0 +1,36 @@
+name: 'Trigger Dokploy'
+description: 'Triggers a Dokploy application deployment via API'
+
+inputs:
+  dokploy-domain:
+    description: 'Dokploy base URL, for example https://dokploy.example.com'
+    required: true
+  dokploy-api-key:
+    description: 'Dokploy API key'
+    required: true
+  application-id:
+    description: 'Dokploy application ID to deploy'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Trigger deployment
+      shell: bash
+      env:
+        DOKPLOY_DOMAIN: ${{ inputs.dokploy-domain }}
+        DOKPLOY_API_KEY: ${{ inputs.dokploy-api-key }}
+        APPLICATION_ID: ${{ inputs.application-id }}
+      run: |
+        set -euo pipefail
+
+        domain="${DOKPLOY_DOMAIN%/}"
+        endpoint="$domain/api/application.deploy"
+
+        curl --fail-with-body --silent --show-error \
+          --request POST \
+          --url "$endpoint" \
+          --header 'accept: application/json' \
+          --header "x-api-key: $DOKPLOY_API_KEY" \
+          --header 'Content-Type: application/json' \
+          --data "{\"applicationId\":\"$APPLICATION_ID\"}"
