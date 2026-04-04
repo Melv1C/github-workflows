@@ -1,0 +1,41 @@
+name: 'Publish Package'
+description: 'Publishes a library with npm, pnpm, or bun'
+inputs:
+  package-manager:
+    description: 'Package manager to use (npm, pnpm, bun)'
+    required: false
+    default: 'npm'
+  working-directory:
+    description: 'Directory containing the package to publish'
+    default: '.'
+  tag:
+    description: 'Distribution tag to publish under'
+    default: 'latest'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Publish Package
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd "${{ inputs.working-directory }}"
+
+        package_manager='${{ inputs.package-manager }}'
+        tag='${{ inputs.tag }}'
+
+        case "$package_manager" in
+          npm)
+            npm publish --tag "$tag"
+            ;;
+          pnpm)
+            pnpm publish --tag "$tag"
+            ;;
+          bun)
+            bun publish --tag "$tag"
+            ;;
+          *)
+            echo "Unsupported package manager: $package_manager"
+            exit 1
+            ;;
+        esac

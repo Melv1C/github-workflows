@@ -1,0 +1,52 @@
+name: Publish Library
+
+on:
+  workflow_call:
+    inputs:
+      package-manager:
+        description: Package manager to use (npm, pnpm, bun)
+        required: false
+        type: string
+        default: npm
+      node-version:
+        description: Node.js version to use
+        required: false
+        type: string
+        default: '24'
+      libraries:
+        description: JSON array of library names to publish
+        type: string
+        default: '[]'
+    secrets:
+      auth-token:
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup
+        uses: melv1c/github-workflows/.github/actions/setup@main
+        with:
+          package-manager: ${{ inputs.package-manager }}
+          node-version: ${{ inputs.node-version }}
+
+      - name: Tag extraction
+        id: tag-extraction
+        uses: melv1c/github-workflows/.github/actions/tag-extraction@main
+        with:
+          apps: ${{ inputs.libraries }}
+
+      - name: Publish package
+        uses: melv1c/github-workflows/.github/actions/publish-package@main
+        with:
+          package-manager: ${{ inputs.package-manager }}
+          working-directory: ./packages/${{ steps.tag-extraction.outputs.app-name }}
+          tag: ${{ steps.tag-extraction.outputs.release-tag }}

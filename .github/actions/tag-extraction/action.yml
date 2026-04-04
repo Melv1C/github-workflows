@@ -16,6 +16,9 @@ outputs:
   is-prerelease:
     description: 'Whether the parsed version is a pre-release'
     value: ${{ steps.resolve.outputs.is-prerelease }}
+  release-tag:
+    description: 'Resolved publish tag (prerelease identifier or latest)'
+    value: ${{ steps.resolve.outputs.release-tag }}
 
 runs:
   using: 'composite'
@@ -59,13 +62,21 @@ runs:
         fi
 
         is_prerelease='false'
+        release_tag='latest'
         if [[ "$version" == *-* ]]; then
           version_without_build="${version%%+*}"
           if [[ "$version_without_build" == *-* ]]; then
             is_prerelease='true'
+
+            prerelease_part="${version_without_build#*-}"
+            prerelease_identifier="${prerelease_part%%.*}"
+            if [[ -n "$prerelease_identifier" ]]; then
+              release_tag="$prerelease_identifier"
+            fi
           fi
         fi
 
         echo "app-name=$app_name" >> "$GITHUB_OUTPUT"
         echo "version=$version" >> "$GITHUB_OUTPUT"
         echo "is-prerelease=$is_prerelease" >> "$GITHUB_OUTPUT"
+        echo "release-tag=$release_tag" >> "$GITHUB_OUTPUT"
