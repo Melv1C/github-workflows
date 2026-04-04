@@ -28,73 +28,23 @@ concurrency:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    environment: prod
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Resolve deploy parameters
-        id: params
-        shell: bash
-        env:
-          TAG_NAME: ${{ github.ref_name }}
-          INPUT_APPS: ${{ inputs.apps }}
-          IMAGE_NAME_PREFIX: ${{ inputs.image-name-prefix }}
-        run: |
-          set -euo pipefail
-
-          tag_name="$TAG_NAME"
-          tagged_app_name="${tag_name%@*}"
-          version="${tag_name#*@}"
-
-          if [[ -z "$tagged_app_name" || -z "$version" || "$tag_name" == "$tagged_app_name" ]]; then
-            echo "Malformed tag '$tag_name'. Expected format app-name@version."
-            exit 1
-          fi
-
-          if [[ -n "$INPUT_APPS" ]]; then
-            if ! jq -e 'type == "array" and all(.[]; type == "string")' <<< "$INPUT_APPS" >/dev/null; then
-              echo "Malformed apps input '$INPUT_APPS'. Expected a JSON array of app names, for example [\"backend\",\"frontend\"]."
-              exit 1
-            fi
-
-            if ! jq -e --arg app "$tagged_app_name" 'index($app) != null' <<< "$INPUT_APPS" >/dev/null; then
-              echo "Deployment skipped for app '$tagged_app_name' as it is not included in the apps input list."
-              exit 0
-            fi
-          fi
-
-          app_name="$tagged_app_name"
-
-          if [[ -z "$app_name" ]]; then
-            echo "Missing app name. Push a valid tag in the format app-name@version."
-            exit 1
-          fi
-
-          semver_regex='^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9A-Za-z.-]+)?$'
-          if [[ ! "$version" =~ $semver_regex ]]; then
-            echo "Malformed version '$version'. Expected stable semantic version only (for example 1.2.3). Pre-release versions (alpha, beta, rc, etc.) are not allowed."
-            exit 1
-          fi
-
-          image_name="$app_name"
-
-          if [[ -n "$IMAGE_NAME_PREFIX" ]]; then
-            image_name="${IMAGE_NAME_PREFIX}-${app_name}"
-          fi
-
-          echo "app-name=$app_name" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "image-name=$image_name" >> "$GITHUB_OUTPUT"
+      - name: Tag extraction
+        uses: melv1c/github-workflows/.github/actions/tag-extraction@main
+        with:
+          apps: ${{ inputs.apps }}
 
       - name: Build and push image
-        if: steps.params.outputs.app-name != '' && steps.params.outputs.version != ''
+        if: steps.tag-extraction.outputs.app-name != '' && steps.tag-extraction.outputs.version != ''
         uses: melv1c/github-workflows/.github/actions/docker-deploy@main
         with:
-          app-name: ${{ steps.params.outputs.app-name }}
+          app-name: ${{ steps.tag-extraction.outputs.app-name }}
           context: .
-          dockerfile: apps/${{ steps.params.outputs.app-name }}/Dockerfile
-          version: ${{ steps.params.outputs.version }}
-          image-name: ${{ steps.params.outputs.image-name }}
+          dockerfile: apps/${{ steps.tag-extraction.outputs.app-name }}/Dockerfile
+          version: ${{ steps.tag-extraction.outputs.version }}
+          image-name: ${{ inputs.image-name-prefix }}${{ steps.tag-extraction.outputs.app-name }}
           dockerhub-username: ${{ secrets.dockerhub-username }}
           dockerhub-token: ${{ secrets.dockerhub-token }}
