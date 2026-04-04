@@ -29,23 +29,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Resolve image name
-        id: params
-        shell: bash
-        env:
-          APP_NAME: ${{ matrix.app }}
-          IMAGE_NAME_PREFIX: ${{ inputs.image-name-prefix }}
-        run: |
-          set -euo pipefail
-
-          image_name="$APP_NAME"
-
-          if [[ -n "$IMAGE_NAME_PREFIX" ]]; then
-            image_name="${IMAGE_NAME_PREFIX}-${APP_NAME}"
-          fi
-
-          echo "image-name=$image_name" >> "$GITHUB_OUTPUT"
-
       - name: Build and push image
         uses: melv1c/github-workflows/.github/actions/docker-deploy@main
         with:
@@ -53,6 +36,6 @@ jobs:
           context: .
           dockerfile: apps/${{ matrix.app }}/Dockerfile
           tag: staging
-          image-name: ${{ steps.params.outputs.image-name }}
+          image-name: ${{ inputs.image-name-prefix }}${{ matrix.app }}
           dockerhub-username: ${{ secrets.dockerhub-username }}
           dockerhub-token: ${{ secrets.dockerhub-token }}
